@@ -1,65 +1,90 @@
-# Sistema de Modelado Analítico y Simulación del Crecimiento Poblacional ante Contaminantes
+# Fish population under a pollutant — qualitative analysis of a nonlinear ODE system
 
-Este repositorio contiene el desarrollo analítico, las bases teóricas y las herramientas de simulación numérica en **MATLAB** correspondientes al proyecto de investigación **"Estudio de Poblaciones influidas por un Contaminante"**. 
+Analytical study (equilibria, linearisation, Lyapunov stability) and MATLAB phase-portrait
+simulation of a two-dimensional ODE model in which a pollutant discharged into a body of water
+reduces a logistically growing fish population.
 
-El núcleo del proyecto radica en modelizar matemáticamente la interacción dinámica entre una población biológica (v.g. peces en un cuerpo de agua) y un agente contaminante externo que experimenta procesos de introducción continuada y autorregulación natural, evaluando la viabilidad y persistencia de la especie bajo diferentes escenarios de toxicidad.
+## The problem
 
----
+A treatment-plant failure keeps discharging a pollutant into a lake. The pollutant decays
+naturally and is partly absorbed by the fish, while it raises fish mortality. The question is
+qualitative: **for which parameter regimes does the population go extinct, and for which does it
+settle at a positive equilibrium?** Answering it requires locating the equilibria, classifying
+their stability — including a non-hyperbolic case where linearisation is inconclusive — and
+estimating basins of attraction.
 
-## 📐 El Modelo Matemático (Sistema de EDOs)
+## At a glance
 
-El comportamiento del ecosistema se rige por un sistema bidimensional de ecuaciones diferenciales ordinarias autónomas no lineales, definido matemáticamente como:
+| | |
+|---|---|
+| **Model** | `x' = r x (1 − x) − α x y`, `y' = I − d y − β x y`, with `x` = population / carrying capacity and `y` = pollutant concentration (all constants positive) |
+| **Methods** | Nullclines and equilibria; Jacobian linearisation; a Lyapunov function for the critical case; phase portraits with `ode45` |
+| **Main results** | The extinction equilibrium `E₀ = (0, I/d)` always exists; it is locally asymptotically stable when `r d < α I` and a saddle when `r d > α I`. In the critical case `r d = α I` (one zero eigenvalue) a Lyapunov function proves asymptotic stability and gives an estimate of the basin of attraction. Interior (coexistence) equilibria are analysed for example parameter sets |
+| **Type** | University group coursework, Universidade de Santiago de Compostela, academic year 2024/25 (report dated December 2024) |
 
-$$\begin{cases} \frac{dx}{dt} = r x (1 - x) - a x y \\ \frac{dy}{dt} = I - d y - B x y \end{cases}$$
+## Key result: the critical case
 
-Donde las variables de estado y los parámetros biológicos/químicos se definen como:
-* **$x(t)$:** Densidad de la población de peces normalizada respecto a la capacidad de carga del ecosistema ($x = P/k \in [0, 1]$).
-* **$y(t)$:** Concentración del agente contaminante en el medio acuático ($y \ge 0$).
-* **$r$:** Tasa intrínseca de crecimiento de la población biológica.
-* **$a$:** Tasa de mortalidad o detrimento poblacional inducido por la toxicidad del contaminante.
-* **$I$:** Tasa constante de introducción o vertido del contaminante en el cuerpo de agua.
-* **$d$:** Tasa de descomposición, degradación o disipación natural del contaminante.
-* **$B$:** Tasa de eliminación o absorción secundaria del contaminante debido a la interacción directa con la propia biomasa o población.
+For the critical parameter set used in the report (`r = α = I = d = β = 1/2`, so `r d = α I`), the
+Jacobian at `E₀ = (0, 1)` has eigenvalues `{0, −1/2}`, so linearisation does not decide stability.
+The report constructs
 
----
+```
+V(x, y) = x² + (y − 1)²/2 + x (y − 1)
+```
 
-## 📊 Fases del Análisis Teórico-Práctico
+whose derivative along trajectories is
 
-El estudio matemático aborda el problema desde un enfoque cualitativo de sistemas dinámicos, dividiéndose en las siguientes etapas fundamentales:
+```
+V̇(x, y) = −½ (2x + 1)(x + y − 1)²  ≤ 0   for x > −1/2,
+```
 
-### 1. Análisis de Singularidades y Puntos de Equilibrio
-Se determinan analíticamente los estados estacionarios del sistema igualando las derivadas a cero (isoclinas de crecimiento cero: $\dot{x}=0$, $\dot{y}=0$).
-* **Extinción Poblacional:** Se demuestra la existencia universal de la singularidad $E_0 = (0, I/d)$, un escenario crítico donde la población de peces se extingue por completo y el contaminante se estabiliza en su ratio de equilibrio natural.
-* **Coexistencia Biológica:** Se deducen algebraicamente las condiciones analíticas necesarias para la aparición de singularidades interiores $E^* = (x^*, y^*)$ en el primer cuadrante, lo que representa un equilibrio estacionario donde la especie sobrevive en un medio controlado.
+and combines this with the geometry of the elliptical level sets of `V` to show asymptotic
+stability of `E₀` and to approximate its basin of attraction.
 
-### 2. Análisis Cualitativo del Espacio de Fases (Órbitas)
-Se traza el mapa de direcciones y el comportamiento de las trayectorias temporales (órbitas) del sistema en el plano de fases. El análisis revela cómo las condiciones iniciales del vertido y la resiliencia de la población determinan el destino final del ecosistema: la recuperación biológica o el colapso ecológico irreversible.
+*Verification:* both the eigenvalues and the closed form of `V̇` were re-derived symbolically with
+SymPy for this README (2026-10-26) and match the report.
 
-### 3. Estudio de Estabilidad Local y Global en $(0, I/d)$
-Para comprender las dinámicas de extinción, se evalúa la estabilidad del punto $E_0$ mediante dos herramientas potentes:
-* **Linealización Local (Matriz Jacobiana):** Se calcula el Jacobiano del sistema en la frontera, obteniendo los autovalores para clasificar la naturaleza local del punto (nodo atractor, punto de silla, etc.) en función del umbral crítico $rd - I\alpha$.
-* **Estabilidad Global (Funciones de Liapunov):** En el escenario crítico donde el sistema no lineal presenta ambigüedad analítica ($rd = I\alpha$), se construye y valida analíticamente una **Función de Liapunov** ad-hoc basada en formas bilineales y geometrías elípticas:
-    $$V(x,y) = x^2 + \frac{(y-1)^2}{2} + x(y-1)$$
-    Se demuestra rigurosamente mediante el cálculo de la derivada a lo largo de las trayectorias (órbita derivada $\dot{V} \le 0$) la estabilidad asintótica y las regiones de atracción del sistema, acotando matemáticamente el umbral en el cual la población se ve irremediablemente abocada a la extinción.
+## Contents
 
----
+| File | Description |
+|---|---|
+| [`Estudio_de_Poblaciones_influidas_por_un_Contaminante.pdf`](Estudio_de_Poblaciones_influidas_por_un_Contaminante.pdf) | 15-page report (Spanish): model derivation, equilibria, orbits, stability of `E₀` (linearisation and Lyapunov), other equilibria, conclusions |
+| [`Orbitas.m`](Orbitas.m) | MATLAB script: vector field (`quiver`) and orbits from seven initial conditions integrated with `ode45` over `t ∈ [−100, 100]` |
 
-## 💻 Simulación Numérica con MATLAB (`Orbitas.m`)
+## Running the simulation
 
-Para contrastar el desarrollo algebraico con la realidad empírica del sistema dinámico, el script `Orbitas.m` automatiza la computación analítica y visual del plano de fases.
+Requires MATLAB (base installation; `ode45`, `meshgrid` and `quiver` are built in).
 
-### Funcionalidades del Script:
-* **Resolución Numérica de Alta Precisión:** Utiliza el resolvedor estándar **`ode45`** (basado en un par Runge-Kutta explícito de orden 4 y 5) para integrar el sistema tanto hacia adelante como hacia atrás en el tiempo (`tspan = [-100, 100]`), capturando la evolución completa de las órbitas.
-* **Modelado del Campo Vectorial:** Genera una rejilla bidimensional compacta mediante `meshgrid` para calcular y proyectar el campo de direcciones del sistema empleando la función gráfica `quiver()`.
-* **Análisis Multiescenario de Condiciones Iniciales:** Evalúa de forma simultánea un vector matricial de condiciones límite preconfiguradas:
-    * Estados de baja contaminación y alta población.
-    * Escenarios de choque con vertidos masivos iniciales.
-    * Dinámicas próximas a los bordes de las cuencas de atracción.
-* **Representación Geométrica de Singularidades:** Localiza e ilustra gráficamente el punto crítico de extinción $(0, I/d)$ mediante marcadores geométricos de contraste para estudiar visualmente el comportamiento asintótico de las órbitas atractoras.
+```matlab
+Orbitas    % opens the phase portrait for the parameters set at the top of the file
+```
 
----
+The script was not executed for this README (no MATLAB licence in the review environment).
 
-## 📈 Estructura del Repositorio
+**Note on the plot markers.** The active parameters are `r = 0.5, α = 0.4, I = 0.4, d = 0.5,
+β = 0.5`, for which the equilibria are `E₀ = (0, 0.8)` and an interior equilibrium at `(0.6, 0.5)`.
+The script also marks the point `(0.2, 1)`, which is the interior equilibrium of the commented-out
+parameter set with `d = 0.3`; edit the marker if you change parameters.
 
-* `Estudio de Poblaciones influidas por un Contaminante.pdf`: Memoria de investigación científica que detalla las demostraciones teoremanas, cálculo matricial del Hessiano y el desarrollo formal del modelo.
-* `Orbitas.m`: Script ejecutable en entorno MATLAB para reproducir las simulaciones numéricas y los gráficos dinámicos del espacio de fases.
+## Limitations
+
+- Purely qualitative analysis: parameters are illustrative, not estimated from data.
+- The Lyapunov argument is carried out for one critical parameter set, not in full generality.
+- Interior equilibria are analysed for example parameter values rather than through a complete
+  bifurcation analysis.
+- Integrating backwards in time (`t < 0`) can leave the biologically meaningful region `x, y ≥ 0`;
+  those parts of the orbits are shown for geometric context only.
+
+## Technologies
+
+Ordinary differential equations, linear stability analysis, Lyapunov methods, MATLAB, LaTeX.
+
+## Authors
+
+Report by María Sabucedo García, Iván Vázquez Cruces, Pedro Muñoz Polanco Contioso, Raquel Manzano
+Núñez, **Fernando González González** and Manuel Zumel López (USC, 2024/25), as listed on the
+report's title page.
+
+Repository maintained by Fernando González González —
+[LinkedIn](https://www.linkedin.com/in/fernando-gonzalez-gonzalez-math/) ·
+[GitHub](https://github.com/fernandogg2004)
